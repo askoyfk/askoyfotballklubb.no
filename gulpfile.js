@@ -36,6 +36,68 @@ gulp.task('default', function() {
 });
 
 
+gulp.task('downloadVideos', function() {
+
+    let lower = config.videoRange[0];
+    let upper = config.videoRange[1];
+
+    (function delay() {
+        setTimeout(function() {
+            downloadVideo(upper);
+            upper--;
+            if (upper > lower -1) {
+                delay();
+            }
+        }, 100);
+    }());
+
+});
+
+
+function downloadVideo(artNum) {
+    co(function* () {
+
+        // let artNum = 3650;
+
+        let url = config.baseUrl + config.videoUrl + artNum;
+
+        let result = yield request({ encoding: 'binary', uri: url });
+
+        // fix encoding
+        let body = new Buffer(result.body, 'binary');
+        let conv = new iconv.Iconv('windows-1252', 'utf8');
+        body = conv.convert(body).toString();
+
+        mkdirp(path.join(config.dest, 'videos'));
+
+        fs.writeFile(path.join(config.dest, 'videos', artNum + '.html'), body);
+
+    });
+}
+
+
+
+
+gulp.task('downloadSections', function() {
+    co(function* (){
+
+        let sections = config.sections;
+
+        mkdirp(path.join(config.dest, 'sections'));
+
+        for (let section of sections) {
+            try {
+                let result = yield request(config.baseUrl + '/' + section.url);
+                fs.writeFile(path.join(config.dest, 'sections', section.name + '.html'), result.body);
+            } catch(e) {
+                console.log(e);
+            }
+
+        }
+
+    });
+});
+
 
 gulp.task('createImagesList', function() {
 
