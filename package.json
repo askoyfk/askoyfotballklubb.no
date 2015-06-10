@@ -1,0 +1,31 @@
+{
+  "name": "askoyfotballklubb.no",
+  "version": "1.0.0",
+  "description": "Articles from the old site",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/askoyfk/askoyfotballklubb.no"
+  },
+  "author": "Victor Nystad",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/askoyfk/askoyfotballklubb.no/issues"
+  },
+  "devDependencies": {
+    "co": "^4.5.4",
+    "co-request": "^0.2.1",
+    "css-select": "^1.1.0",
+    "dom-serializer": "^0.1.0",
+    "domhandler": "^2.3.0",
+    "gulp": "^3.9.0",
+    "htmlparser2": "^3.8.3",
+    "iconv": "^2.1.8",
+    "js-yaml": "^3.3.1",
+    "mkdirp": "^0.5.1",
+    "mz": "^2.0.0",
+  }
+}
