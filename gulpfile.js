@@ -14,6 +14,8 @@ let fs = require('mz/fs');
 let path = require('path');
 let iconv = require('iconv');
 
+let articles = [];
+
 gulp.task('default', function() {
 
     let lower = config.articleRange[0];
@@ -25,17 +27,69 @@ gulp.task('default', function() {
             upper--;
             if (upper > lower -1) {
                 delay();
+            } else {
+                fs.writeFile(path.join(config.dest, 'articles', 'articles.json'), JSON.stringify(articles, null, 4));
             }
-        }, 200);
+        }, 100);
     }());
 
 });
 
 
+
+gulp.task('createImagesList', function() {
+
+    let images = [];
+
+    co(function* () {
+        let articles = yield fs.readFile(path.join(config.dest, 'articles', 'articles.json'), 'utf8');
+
+        articles = JSON.parse(articles);
+
+        let articlesWithImages = articles.filter(function(article) {
+            if (article.images) {
+                return article;
+            }
+        });
+
+        for (let article of articlesWithImages) {
+            for (let image of article.images) {
+                images.push(image);
+            }
+        }
+
+    }).then(function() {
+        fs.writeFile(path.join(config.dest, 'articles', 'images.json'), JSON.stringify(images, null, 4));
+    });
+
+
+});
+
+
+gulp.task('downloadImages', function() {
+
+    co(function* () {
+        let imagesUrls = yield fs.readFile(path.join(config.dest, 'articles', 'images.json'), 'utf8');
+
+        imagesUrls = JSON.parse(imagesUrls);
+
+        (function download() {
+            setTimeout(function() {
+                downloadImage(imagesUrls.pop());
+                if (imagesUrls.length > 0) {
+                    console.log(imagesUrls.length);
+                    download();
+                }
+            }, 100);
+        }());
+    });
+
+});
+
 function downloadPage(artNum) {
     co(function* () {
 
-        //let artNum = 3650;
+        // let artNum = 3650;
 
         let url = config.baseUrl + config.articleUrl + artNum;
 
@@ -46,13 +100,34 @@ function downloadPage(artNum) {
         let conv = new iconv.Iconv('windows-1252', 'utf8');
         body = conv.convert(body).toString();
 
+        let dom = htmlparser.parseDOM(body);
 
-        fs.writeFile(path.join(config.dest, 'articles', artNum + '.html'), body);
 
+
+        let content = select('.contentBodyContainer', dom);
+
+
+        let signature = select('.signature', content)[0].children[0].data.split(', ');
+
+
+        let year = signature[1].split('.')[2];
+
+
+
+        mkdirp(path.join(config.dest, 'articles', year));
+
+        fs.writeFile(path.join(config.dest, 'articles', year, artNum + '.html'), body);
+
+        // frontmatter
+        let frontmatter = {
+            id: artNum,
+            title : select('h1', content)[0].children[0].data,
+            author : signature[0],
+            date : signature[1].split('.').reverse().join('-')
+        };
 
         // fetch images used in article
 
-        let dom = htmlparser.parseDOM(body);
 
         let imgs = select('img', dom);
 
@@ -65,15 +140,22 @@ function downloadPage(artNum) {
         });
 
         if (urls.length > 0) {
+
+            frontmatter.images = [];
+
             for (let url of urls) {
-                downloadImage(config.baseUrl + url);
+                frontmatter.images.push(config.baseUrl + url);
+                // downloadImage(config.baseUrl + url);
             }
         }
+
+        articles.push(frontmatter);
 
     });
 }
 
 function downloadImage(url) {
+
     co(function* () {
 
         let dirname = path.dirname(url).replace(config.baseUrl, '');
@@ -96,10 +178,12 @@ function downloadImage(url) {
 
 
 // build markdown file for use in Jekyll
-gulp.task('convertToMarkdown', function() {
+gulp.task('convert', function(artNum) {
     co(function* () {
 
-        let result = yield request(config.baseUrl + config.articleUrl + 500);
+        let artNum = 500;
+
+        let result = yield request(config.baseUrl + config.articleUrl + artNum);
 
         let dom = htmlparser.parseDOM(result.body);
 
@@ -118,11 +202,11 @@ gulp.task('convertToMarkdown', function() {
         let signature = select('.signature', content)[0].children[0].data.split(', ');
 
         let frontmatter = {
+            id: artNum,
             title : select('h1', content)[0].children[0].data,
             author : signature[0],
-            date : signature[1]
+            date : signature[1].split('.').reverse().join('-')
         };
-
 
         console.log(frontmatter);
 
